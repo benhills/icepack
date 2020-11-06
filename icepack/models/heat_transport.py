@@ -47,11 +47,15 @@ class HeatTransport3D:
         Q = E.function_space()
         ψ = firedrake.TestFunction(Q)
 
-        U = firedrake.as_vector((u[0], u[1], w))
-        flux_cells = -E * inner(U, grad(ψ)) * h * dx
-
         mesh = Q.mesh()
         ν = facet_normal_nd(mesh)
+
+        if mesh._geometric_dimension > 2:
+            U = firedrake.as_vector((u[0], u[1], w))
+        elif mesh._geometric_dimension <= 2:
+            U = firedrake.as_vector((u, w))
+        flux_cells = -E * inner(U, grad(ψ)) * h * dx
+
         outflow = firedrake.max_value(inner(u, ν), 0)
         inflow = firedrake.min_value(inner(u, ν), 0)
 
@@ -77,8 +81,9 @@ class HeatTransport3D:
         Q = E.function_space()
         ψ = firedrake.TestFunction(Q)
 
+        mesh = Q.mesh()
         κ = self.surface_exchange_coefficient
-        cell_flux = α * E.dx(2) * ψ.dx(2) / h * dx
+        cell_flux = α * E.dx(mesh._geometric_dimension-1) * ψ.dx(mesh._geometric_dimension-1) / h * dx
         surface_flux = κ * α * (E - E_surface) * ψ / h * ds_t
 
         return cell_flux + surface_flux
